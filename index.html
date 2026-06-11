@@ -1,109 +1,155 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Viki & Peťo</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viki & Peťo</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: white;
-      color: black;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
+<style>
+body{
+    margin:0;
+    padding:20px;
+    font-family:Arial,sans-serif;
+    background:#ffffff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
 
-    h1 {
-      font-size: 28px;
-      margin-bottom: 30px;
-    }
+.container{
+    text-align:center;
+    width:100%;
+    max-width:400px;
+}
 
-    button {
-      padding: 16px 22px;
-      border: none;
-      border-radius: 12px;
-      background: black;
-      color: white;
-      font-size: 16px;
-      margin: 10px;
-      width: 220px;
-      cursor: pointer;
-    }
+button{
+    width:100%;
+    padding:18px;
+    margin:10px 0;
+    border:none;
+    border-radius:12px;
+    background:#000;
+    color:#fff;
+    font-size:18px;
+    cursor:pointer;
+}
 
-    #status {
-      margin-top: 20px;
-      font-size: 14px;
-      text-align: center;
-    }
+button:hover{
+    opacity:0.9;
+}
 
-    input {
-      display: none;
-    }
-  </style>
+#status{
+    margin-top:20px;
+    font-size:16px;
+}
+</style>
 </head>
 
 <body>
 
-<h1>Odfoť sa 📸</h1>
+<div class="container">
 
-<input type="file" accept="image/*" capture="environment" id="fileInput">
+    <button onclick="openCamera()">
+        Odfoť sa a pošli 📸
+    </button>
 
-<button onclick="openCamera()">Odfoť sa a pošli 📸</button>
-<button onclick="uploadImage()">Nahraj fotku z galérie 🖼️</button>
-<div id="status"></div>
+    <button onclick="openGallery()">
+        Nahraj fotku z galérie 🖼️
+    </button>
+
+    <div id="status"></div>
+
+</div>
+
+<input
+    type="file"
+    id="cameraInput"
+    accept="image/*"
+    capture="environment"
+    style="display:none"
+>
+
+<input
+    type="file"
+    id="galleryInput"
+    accept="image/*"
+    style="display:none"
+>
 
 <script>
-const fileInput = document.getElementById('fileInput');
 
-window.onload = () => {
-  setTimeout(() => {
-    fileInput.click();
-  }, 800);
-};
+const cameraInput = document.getElementById("cameraInput");
+const galleryInput = document.getElementById("galleryInput");
+const statusDiv = document.getElementById("status");
 
-function openCamera() {
-  fileInput.click();
+function openCamera(){
+    cameraInput.click();
 }
 
-function uploadImage() {
-  const file = fileInput.files[0];
+function openGallery(){
+    galleryInput.click();
+}
 
-  if (!file) {
-    document.getElementById('status').innerText = "Najprv odfoť fotku";
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", "svadba_viktoria_peter");
-
-  document.getElementById('status').innerText = "Nahrávam...";
-
-  fetch("https://api.cloudinary.com/v1_1/da3roufa0/image/upload", {
-    method: "POST",
-    body: formData
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.secure_url) {
-      document.getElementById('status').innerText = "Fotka bola úspešne odoslaná ❤️";
-      fileInput.value = "";
-    } else {
-      document.getElementById('status').innerText = "Chyba uploadu";
-      console.log(data);
+cameraInput.addEventListener("change", function(){
+    if(this.files.length){
+        uploadFile(this.files[0]);
     }
-  })
-  .catch(err => {
-    document.getElementById('status').innerText = "Chyba pripojenia";
-    console.log(err);
-  });
+});
+
+galleryInput.addEventListener("change", function(){
+    if(this.files.length){
+        uploadFile(this.files[0]);
+    }
+});
+
+function uploadFile(file){
+
+    statusDiv.innerHTML = "Nahrávam...";
+
+    const formData = new FormData();
+
+    formData.append("file", file);
+    formData.append("upload_preset", "svadba_viktoria_peter");
+
+    fetch(
+        "https://api.cloudinary.com/v1_1/da3roufa0/image/upload",
+        {
+            method:"POST",
+            body:formData
+        }
+    )
+    .then(response => response.json())
+    .then(data => {
+
+        if(data.secure_url){
+
+            statusDiv.innerHTML =
+            "Fotka bola úspešne odoslaná ❤️";
+
+        }else{
+
+            statusDiv.innerHTML =
+            "Chyba pri nahrávaní.";
+
+            console.log(data);
+        }
+
+    })
+    .catch(error => {
+
+        statusDiv.innerHTML =
+        "Chyba pripojenia.";
+
+        console.log(error);
+
+    });
 }
+
 </script>
 
 </body>
 </html>
+
+
+
