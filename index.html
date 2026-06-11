@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Viki & Peťo</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: white;
+      color: black;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 16px 22px;
+      border: none;
+      border-radius: 12px;
+      background: black;
+      color: white;
+      font-size: 16px;
+      margin: 10px;
+      width: 220px;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    input {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Odfoť sa 📸</h1>
+
+<input type="file" accept="image/*" capture="environment" id="fileInput">
+
+<button onclick="openCamera()">Otvoriť kameru</button>
+<button onclick="uploadImage()">Odoslať fotku</button>
+
+<div id="status"></div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+
+window.onload = () => {
+  setTimeout(() => {
+    fileInput.click();
+  }, 800);
+};
+
+function openCamera() {
+  fileInput.click();
+}
+
+function uploadImage() {
+  const file = fileInput.files[0];
+
+  if (!file) {
+    document.getElementById('status').innerText = "Najprv odfoť fotku";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "svadba_viktoria_peter");
+
+  document.getElementById('status').innerText = "Nahrávam...";
+
+  fetch("https://api.cloudinary.com/v1_1/da3roufa0/image/upload", {
+    method: "POST",
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.secure_url) {
+      document.getElementById('status').innerText = "Fotka bola úspešne odoslaná ❤️";
+      fileInput.value = "";
+    } else {
+      document.getElementById('status').innerText = "Chyba uploadu";
+      console.log(data);
+    }
+  })
+  .catch(err => {
+    document.getElementById('status').innerText = "Chyba pripojenia";
+    console.log(err);
+  });
+}
+</script>
+
+</body>
+</html>
