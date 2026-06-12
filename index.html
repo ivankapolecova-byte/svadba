@@ -12,10 +12,14 @@ body {
   background: white;
 }
 
+h2 {
+  margin: 10px;
+}
+
 button {
   width: 100%;
   padding: 14px;
-  margin: 8px 0;
+  margin: 6px 0;
   background: black;
   color: white;
   border: none;
@@ -74,38 +78,42 @@ button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+// 🔥 FIREBASE
 const firebaseConfig = {
-  databaseURL: "TVOJ_FIREBASE_URL"
+  databaseURL: "https://svadba-gallery-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// ☁️ CLOUDINARY
+const CLOUD = "da3roufa0";
+const UPLOAD_PRESET = "svadba"; // <-- musíš mať v Cloudinary
+
 const grid = document.getElementById("grid");
 const viewer = document.getElementById("viewer");
 const viewerImg = document.getElementById("viewerImg");
 
-const CLOUD = "da3roufa0";
-
 // 📤 upload do Cloudinary
-async function upload(file) {
+async function uploadToCloudinary(file) {
   const form = new FormData();
   form.append("file", file);
-  form.append("upload_preset", "svadba");
+  form.append("upload_preset", UPLOAD_PRESET);
 
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, {
-    method: "POST",
-    body: form
-  });
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`,
+    { method: "POST", body: form }
+  );
 
   const data = await res.json();
   return data.secure_url;
 }
 
-// 📸 kamera / galéria
-async function handle(file) {
-  const url = await upload(file);
+// 📸 spracovanie fotky
+async function handleFile(file) {
+  const url = await uploadToCloudinary(file);
 
+  // uloží do Firebase (LIVE sync)
   push(ref(db, "photos"), {
     url: url,
     time: Date.now()
@@ -113,15 +121,14 @@ async function handle(file) {
 }
 
 // inputy
-camera.onchange = e => handle(e.target.files[0]);
-gallery.onchange = e => handle(e.target.files[0]);
+camera.onchange = e => handleFile(e.target.files[0]);
+gallery.onchange = e => handleFile(e.target.files[0]);
 
-// 👀 LIVE LISTENER
+// 👀 LIVE GALÉRIA (REALTIME)
 onValue(ref(db, "photos"), (snapshot) => {
   grid.innerHTML = "";
 
   const data = snapshot.val();
-
   if (!data) return;
 
   Object.values(data)
