@@ -1,155 +1,155 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Viki & Peťo</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Svadobná galéria</title>
 
 <style>
-body{
-    margin:0;
-    padding:20px;
-    font-family:Arial,sans-serif;
-    background:#ffffff;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    min-height:100vh;
+body {
+  font-family: Arial;
+  margin: 0;
+  padding: 15px;
+  background: #111;
+  color: white;
 }
 
-.container{
-    text-align:center;
-    width:100%;
-    max-width:400px;
+h2 {
+  margin-bottom: 10px;
 }
 
-button{
-    width:100%;
-    padding:18px;
-    margin:10px 0;
-    border:none;
-    border-radius:12px;
-    background:#000;
-    color:#fff;
-    font-size:18px;
-    cursor:pointer;
+button {
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
 }
 
-button:hover{
-    opacity:0.9;
+.camera {
+  background: #4caf50;
+  color: white;
 }
 
-#status{
-    margin-top:20px;
-    font-size:16px;
+.galleryBtn {
+  background: #2196f3;
+  color: white;
+}
+
+.cloudBtn {
+  background: #ff9800;
+  color: white;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: 15px;
+}
+
+.grid img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+#cloudGallery {
+  display: none;
+  margin-top: 15px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<h2>📷 Svadobná galéria</h2>
 
-    <button onclick="openCamera()">
-        Odfoť sa a pošli 📸
-    </button>
+<!-- TLAČIDLÁ -->
+<button class="camera" onclick="openCamera()">📸 Odfoť a pošli</button>
+<button class="galleryBtn" onclick="openGallery()">🖼 Nahraj z galérie</button>
+<button class="cloudBtn" onclick="loadCloudGallery()">👀 Pozrieť fotky hostí</button>
 
-    <button onclick="openGallery()">
-        Nahraj fotku z galérie 🖼️
-    </button>
+<!-- INPUTY -->
+<input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
+<input id="galleryInput" type="file" accept="image/*" multiple hidden>
 
-    <div id="status"></div>
+<!-- LOKÁLNE PREVIEW -->
+<div class="grid" id="preview"></div>
 
+<!-- CLOUDINARY GALÉRIA -->
+<div id="cloudGallery">
+  <h3>Svadobné fotky hostí</h3>
+  <div class="grid" id="cloudGrid"></div>
 </div>
 
-<input
-    type="file"
-    id="cameraInput"
-    accept="image/*"
-    capture="environment"
-    style="display:none"
->
-
-<input
-    type="file"
-    id="galleryInput"
-    accept="image/*"
-    style="display:none"
->
-
 <script>
-
 const cameraInput = document.getElementById("cameraInput");
 const galleryInput = document.getElementById("galleryInput");
-const statusDiv = document.getElementById("status");
+const preview = document.getElementById("preview");
 
-function openCamera(){
-    cameraInput.click();
+// otvorenie kamery
+function openCamera() {
+  cameraInput.click();
 }
 
-function openGallery(){
-    galleryInput.click();
+// otvorenie galérie
+function openGallery() {
+  galleryInput.click();
 }
 
-cameraInput.addEventListener("change", function(){
-    if(this.files.length){
-        uploadFile(this.files[0]);
-    }
+// zobrazenie lokálnych fotiek
+function showImages(files) {
+  for (let file of files) {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const img = document.createElement("img");
+      img.src = e.target.result;
+      preview.appendChild(img);
+    };
+
+    reader.readAsDataURL(file);
+  }
+}
+
+cameraInput.addEventListener("change", e => {
+  showImages(e.target.files);
 });
 
-galleryInput.addEventListener("change", function(){
-    if(this.files.length){
-        uploadFile(this.files[0]);
-    }
+galleryInput.addEventListener("change", e => {
+  showImages(e.target.files);
 });
 
-function uploadFile(file){
+// ===== CLOUDINARY GALÉRIA =====
+function loadCloudGallery() {
+  const CLOUD_NAME = "da3roufa0";
+  const FOLDER = "svadba";
 
-    statusDiv.innerHTML = "Nahrávam...";
+  const cloudGallery = document.getElementById("cloudGallery");
+  const cloudGrid = document.getElementById("cloudGrid");
 
-    const formData = new FormData();
+  cloudGallery.style.display = "block";
+  cloudGrid.innerHTML = "Načítavam fotky...";
 
-    formData.append("file", file);
-    formData.append("upload_preset", "svadba_viktoria_peter");
-
-    fetch(
-        "https://api.cloudinary.com/v1_1/da3roufa0/image/upload",
-        {
-            method:"POST",
-            body:formData
-        }
-    )
-    .then(response => response.json())
+  fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/${FOLDER}.json`)
+    .then(res => res.json())
     .then(data => {
+      cloudGrid.innerHTML = "";
 
-        if(data.secure_url){
-
-            statusDiv.innerHTML =
-            "Fotka bola úspešne odoslaná ❤️";
-
-        }else{
-
-            statusDiv.innerHTML =
-            "Chyba pri nahrávaní.";
-
-            console.log(data);
-        }
-
+      data.resources.forEach(img => {
+        const el = document.createElement("img");
+        el.src = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${FOLDER}/${img.public_id}.jpg`;
+        cloudGrid.appendChild(el);
+      });
     })
-    .catch(error => {
-
-        statusDiv.innerHTML =
-        "Chyba pripojenia.";
-
-        console.log(error);
-
+    .catch(() => {
+      cloudGrid.innerHTML = "Nepodarilo sa načítať fotky.";
     });
 }
-
 </script>
 
 </body>
 </html>
-
-
-
