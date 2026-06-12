@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Svadobná galéria</title>
+<title>Svadobná live galéria</title>
 
 <style>
 body {
@@ -12,9 +12,15 @@ body {
   background: white;
 }
 
-h2 {
-  padding: 15px;
-  margin: 0;
+button {
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
 }
 
 .grid {
@@ -26,12 +32,11 @@ h2 {
 
 .grid img {
   width: 100%;
-  height: 130px;
+  height: 120px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
-/* viewer */
 #viewer {
   position: fixed;
   inset: 0;
@@ -46,108 +51,93 @@ h2 {
   max-height: 90vh;
   object-fit: contain;
 }
-
-.close {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  color: white;
-  font-size: 24px;
-}
 </style>
 </head>
 
 <body>
 
-<h2>📷 Svadobná galéria</h2>
+<h2>📷 Svadobná galéria LIVE</h2>
+
+<button onclick="camera.click()">📸 Odfoť a pošli</button>
+<button onclick="gallery.click()">🖼 Nahraj fotku</button>
+
+<input id="camera" type="file" accept="image/*" capture="environment" hidden>
+<input id="gallery" type="file" accept="image/*" hidden>
 
 <div class="grid" id="grid"></div>
 
-<div id="viewer">
-  <div class="close" onclick="closeViewer()">✖</div>
-  <img id="imgView">
+<div id="viewer" onclick="this.style.display='none'">
+  <img id="viewerImg">
 </div>
 
-<script>
-const CLOUD_NAME = "da3roufa0";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-let images = [];
-let index = 0;
+const firebaseConfig = {
+  databaseURL: "TVOJ_FIREBASE_URL"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
 const grid = document.getElementById("grid");
 const viewer = document.getElementById("viewer");
-const imgView = document.getElementById("imgView");
+const viewerImg = document.getElementById("viewerImg");
 
-// 🔥 NAJSTABILNEJŠÍ CLOUDINARY REQUEST (TAG BASED)
-function loadImages() {
+const CLOUD = "da3roufa0";
 
-  fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/svadba.json`)
-    .then(r => r.json())
-    .then(data => {
+// 📤 upload do Cloudinary
+async function upload(file) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("upload_preset", "svadba");
 
-      images = data.resources.map(img =>
-        `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img.public_id}`
-      );
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, {
+    method: "POST",
+    body: form
+  });
 
-      render();
-    })
-    .catch(() => {
-      grid.innerHTML = "Nepodarilo sa načítať fotky.";
-    });
+  const data = await res.json();
+  return data.secure_url;
 }
 
-// 📱 GRID
-function render() {
-  grid.innerHTML = "";
+// 📸 kamera / galéria
+async function handle(file) {
+  const url = await upload(file);
 
-  images.forEach((src, i) => {
-    const img = document.createElement("img");
-    img.src = src;
-    img.onclick = () => open(i);
-    grid.appendChild(img);
+  push(ref(db, "photos"), {
+    url: url,
+    time: Date.now()
   });
 }
 
-// 👀 OPEN
-function open(i) {
-  index = i;
-  viewer.style.display = "flex";
-  imgView.src = images[index];
-}
+// inputy
+camera.onchange = e => handle(e.target.files[0]);
+gallery.onchange = e => handle(e.target.files[0]);
 
-function closeViewer() {
-  viewer.style.display = "none";
-}
+// 👀 LIVE LISTENER
+onValue(ref(db, "photos"), (snapshot) => {
+  grid.innerHTML = "";
 
-// 👉 swipe
-let startX = 0;
+  const data = snapshot.val();
 
-viewer.addEventListener("touchstart", e => {
-  startX = e.touches[0].clientX;
+  if (!data) return;
+
+  Object.values(data)
+    .reverse()
+    .forEach(photo => {
+      const img = document.createElement("img");
+      img.src = photo.url;
+
+      img.onclick = () => {
+        viewer.style.display = "flex";
+        viewerImg.src = photo.url;
+      };
+
+      grid.appendChild(img);
+    });
 });
-
-viewer.addEventListener("touchend", e => {
-  let endX = e.changedTouches[0].clientX;
-
-  if (startX - endX > 50) next();
-  if (endX - startX > 50) prev();
-});
-
-function next() {
-  if (index < images.length - 1) {
-    index++;
-    imgView.src = images[index];
-  }
-}
-
-function prev() {
-  if (index > 0) {
-    index--;
-    imgView.src = images[index];
-  }
-}
-
-loadImages();
 </script>
 
 </body>
