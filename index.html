@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Svadobná galéria</title>
+<title>Svadba galéria</title>
 
 <style>
 body {
@@ -41,6 +41,7 @@ button {
   border-radius: 8px;
 }
 
+/* fullscreen */
 #viewer {
   position: fixed;
   inset: 0;
@@ -60,46 +61,34 @@ button {
 
 <body>
 
-<h2>📷 Svadobná galéria LIVE</h2>
+<h2>📷 Svadobná galéria</h2>
 
 <!-- 3 TLAČIDLÁ -->
 <button onclick="camera.click()">📸 Odfoť a pošli</button>
 <button onclick="gallery.click()">🖼 Nahraj z galérie</button>
-<button onclick="showGallery()">👀 Pozri si galériu hostí</button>
+<button onclick="loadGallery()">👀 Pozri si fotky hostí</button>
 
+<!-- hidden inputy -->
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
 
-<!-- lokálny preview -->
+<!-- lokálny preview (len po nahraní) -->
 <div class="grid" id="local"></div>
 
-<!-- live galéria -->
+<!-- galéria hostí (zobrazí sa až po kliknutí) -->
 <div class="grid" id="cloud"></div>
 
-<!-- fullscreen -->
+<!-- fullscreen viewer -->
 <div id="viewer" onclick="this.style.display='none'">
   <img id="viewerImg">
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-// 🔥 FIREBASE (TVOJ LINK)
-const firebaseConfig = {
-  databaseURL: "https://svadba-gallery-default-rtdb.europe-west1.firebasedatabase.app"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-// ☁️ CLOUDINARY
-const CLOUD = "da3roufa0";
+<script>
+const CLOUD_NAME = "da3roufa0";
 const UPLOAD_PRESET = "svadba";
 
 const camera = document.getElementById("camera");
 const gallery = document.getElementById("gallery");
-
 const local = document.getElementById("local");
 const cloud = document.getElementById("cloud");
 
@@ -107,28 +96,38 @@ const viewer = document.getElementById("viewer");
 const viewerImg = document.getElementById("viewerImg");
 
 // 📤 upload do Cloudinary
-async function uploadToCloudinary(file) {
+async function upload(file) {
   const form = new FormData();
   form.append("file", file);
   form.append("upload_preset", UPLOAD_PRESET);
 
   const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
     { method: "POST", body: form }
   );
 
   const data = await res.json();
+
+  if (!data.secure_url) {
+    alert("Upload zlyhal!");
+    return null;
+  }
+
   return data.secure_url;
 }
 
 // 📸 spracovanie fotky
 async function handle(file) {
-  const url = await uploadToCloudinary(file);
+  const url = await upload(file);
+  if (!url) return;
 
-  // uloženie do Firebase (LIVE sync)
-  push(ref(db, "photos"), {
-    url: url,
-    time: Date.now()
+  // uložíme URL do Firebase
+  await fetch("https://svadba-gallery-default-rtdb.europe-west1.firebasedatabase.app/photos.json", {
+    method: "POST",
+    body: JSON.stringify({
+      url: url,
+      time: Date.now()
+    })
   });
 }
 
@@ -153,34 +152,37 @@ camera.addEventListener("change", e => showLocal(e.target.files));
 gallery.addEventListener("change", e => showLocal(e.target.files));
 
 
-// 👀 LIVE GALÉRIA
-function showGallery() {
-
+// 👀 GALÉRIA (zobrazí sa LEN po kliknutí)
+async function loadGallery() {
   cloud.innerHTML = "Načítavam...";
 
-  onValue(ref(db, "photos"), (snapshot) => {
-    cloud.innerHTML = "";
+  const res = await fetch(
+    "https://svadba-gallery-default-rtdb.europe-west1.firebasedatabase.app/photos.json"
+  );
 
-    const data = snapshot.val();
-    if (!data) return;
+  const data = await res.json();
 
-    Object.values(data)
-      .reverse()
-      .forEach(photo => {
-        const img = document.createElement("img");
-        img.src = photo.url;
+  cloud.innerHTML = "";
 
-        img.onclick = () => {
-          viewer.style.display = "flex";
-          viewerImg.src = photo.url;
-        };
+  if (!data) {
+    cloud.innerHTML = "Zatiaľ žiadne fotky";
+    return;
+  }
 
-        cloud.appendChild(img);
-      });
+  Object.values(data).reverse().forEach(photo => {
+    const img = document.createElement("img");
+    img.src = photo.url;
+
+    img.onclick = () => {
+      viewer.style.display = "flex";
+      viewerImg.src = photo.url;
+    };
+
+    cloud.appendChild(img);
   });
 }
 </script>
 
 </body>
 </html>
-
+    
