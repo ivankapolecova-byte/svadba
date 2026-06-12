@@ -7,58 +7,52 @@
 
 <style>
 body {
-  font-family: Arial;
   margin: 0;
-  padding: 15px;
-  background: #111;
-  color: white;
+  font-family: Arial;
+  background: white;
 }
 
 h2 {
-  margin-bottom: 10px;
-}
-
-button {
-  width: 100%;
-  padding: 14px;
-  margin: 8px 0;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-}
-
-.camera {
-  background: #4caf50;
-  color: white;
-}
-
-.galleryBtn {
-  background: #2196f3;
-  color: white;
-}
-
-.cloudBtn {
-  background: #ff9800;
-  color: white;
+  padding: 15px;
+  margin: 0;
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-  margin-top: 15px;
+  gap: 4px;
+  padding: 4px;
 }
 
 .grid img {
   width: 100%;
-  height: 120px;
+  height: 130px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
-#cloudGallery {
+/* viewer */
+#viewer {
+  position: fixed;
+  inset: 0;
+  background: black;
   display: none;
-  margin-top: 15px;
+  align-items: center;
+  justify-content: center;
+}
+
+#viewer img {
+  width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: white;
+  font-size: 24px;
 }
 </style>
 </head>
@@ -67,88 +61,93 @@ button {
 
 <h2>📷 Svadobná galéria</h2>
 
-<!-- TLAČIDLÁ -->
-<button class="camera" onclick="openCamera()">📸 Odfoť a pošli</button>
-<button class="galleryBtn" onclick="openGallery()">🖼 Nahraj z galérie</button>
-<button class="cloudBtn" onclick="loadCloudGallery()">👀 Pozrieť fotky hostí</button>
+<div class="grid" id="grid"></div>
 
-<!-- INPUTY -->
-<input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
-<input id="galleryInput" type="file" accept="image/*" multiple hidden>
-
-<!-- LOKÁLNE PREVIEW -->
-<div class="grid" id="preview"></div>
-
-<!-- CLOUDINARY GALÉRIA -->
-<div id="cloudGallery">
-  <h3>Svadobné fotky hostí</h3>
-  <div class="grid" id="cloudGrid"></div>
+<div id="viewer">
+  <div class="close" onclick="closeViewer()">✖</div>
+  <img id="imgView">
 </div>
 
 <script>
-const cameraInput = document.getElementById("cameraInput");
-const galleryInput = document.getElementById("galleryInput");
-const preview = document.getElementById("preview");
+const CLOUD_NAME = "da3roufa0";
 
-// otvorenie kamery
-function openCamera() {
-  cameraInput.click();
+let images = [];
+let index = 0;
+
+const grid = document.getElementById("grid");
+const viewer = document.getElementById("viewer");
+const imgView = document.getElementById("imgView");
+
+// 🔥 NAJSTABILNEJŠÍ CLOUDINARY REQUEST (TAG BASED)
+function loadImages() {
+
+  fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/svadba.json`)
+    .then(r => r.json())
+    .then(data => {
+
+      images = data.resources.map(img =>
+        `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img.public_id}`
+      );
+
+      render();
+    })
+    .catch(() => {
+      grid.innerHTML = "Nepodarilo sa načítať fotky.";
+    });
 }
 
-// otvorenie galérie
-function openGallery() {
-  galleryInput.click();
+// 📱 GRID
+function render() {
+  grid.innerHTML = "";
+
+  images.forEach((src, i) => {
+    const img = document.createElement("img");
+    img.src = src;
+    img.onclick = () => open(i);
+    grid.appendChild(img);
+  });
 }
 
-// zobrazenie lokálnych fotiek
-function showImages(files) {
-  for (let file of files) {
-    const reader = new FileReader();
+// 👀 OPEN
+function open(i) {
+  index = i;
+  viewer.style.display = "flex";
+  imgView.src = images[index];
+}
 
-    reader.onload = (e) => {
-      const img = document.createElement("img");
-      img.src = e.target.result;
-      preview.appendChild(img);
-    };
+function closeViewer() {
+  viewer.style.display = "none";
+}
 
-    reader.readAsDataURL(file);
+// 👉 swipe
+let startX = 0;
+
+viewer.addEventListener("touchstart", e => {
+  startX = e.touches[0].clientX;
+});
+
+viewer.addEventListener("touchend", e => {
+  let endX = e.changedTouches[0].clientX;
+
+  if (startX - endX > 50) next();
+  if (endX - startX > 50) prev();
+});
+
+function next() {
+  if (index < images.length - 1) {
+    index++;
+    imgView.src = images[index];
   }
 }
 
-cameraInput.addEventListener("change", e => {
-  showImages(e.target.files);
-});
-
-galleryInput.addEventListener("change", e => {
-  showImages(e.target.files);
-});
-
-// ===== CLOUDINARY GALÉRIA =====
-function loadCloudGallery() {
-  const CLOUD_NAME = "da3roufa0";
-  const FOLDER = "svadba";
-
-  const cloudGallery = document.getElementById("cloudGallery");
-  const cloudGrid = document.getElementById("cloudGrid");
-
-  cloudGallery.style.display = "block";
-  cloudGrid.innerHTML = "Načítavam fotky...";
-
-  fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/${FOLDER}.json`)
-    .then(res => res.json())
-    .then(data => {
-      cloudGrid.innerHTML = "";
-
-      data.resources.forEach(img => {
-        const el = document.createElement("img");
-        el.src = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${FOLDER}/${img.public_id}.jpg`;
-        cloudGrid.appendChild(el);
-      });
-    })
-    .catch(() => {
-      cloudGrid.innerHTML = "Nepodarilo sa načítať fotky.";
-    });
+function prev() {
+  if (index > 0) {
+    index--;
+    imgView.src = images[index];
+  }
 }
+
+loadImages();
 </script>
 
 </body>
