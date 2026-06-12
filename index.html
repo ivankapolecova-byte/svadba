@@ -57,9 +57,7 @@ button:hover{
     <button onclick="openGallery()">
         Nahraj fotku z galérie 🖼️
     </button>
-<button onclick="openGalleryPage()">
-    ❤️ Pozrieť galériu hostí
-</button>
+
     <div id="status"></div>
 
 </div>
@@ -84,12 +82,6 @@ button:hover{
 const cameraInput = document.getElementById("cameraInput");
 const galleryInput = document.getElementById("galleryInput");
 const statusDiv = document.getElementById("status");
-  function openGalleryPage(){
-    window.open(
-      "https://collection.cloudinary.com/da3roufa0/bf526eebdf0747bcbb02f03edced0340",
-      "_blank"
-    );
-}
 
 function openCamera(){
     cameraInput.click();
