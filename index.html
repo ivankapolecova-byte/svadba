@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Svadobná live galéria</title>
+<title>Svadobná galéria</title>
 
 <style>
 body {
@@ -62,14 +62,21 @@ button {
 
 <h2>📷 Svadobná galéria LIVE</h2>
 
+<!-- 3 TLAČIDLÁ -->
 <button onclick="camera.click()">📸 Odfoť a pošli</button>
-<button onclick="gallery.click()">🖼 Nahraj fotku</button>
+<button onclick="gallery.click()">🖼 Nahraj z galérie</button>
+<button onclick="showGallery()">👀 Pozri si galériu hostí</button>
 
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
 
-<div class="grid" id="grid"></div>
+<!-- lokálny preview -->
+<div class="grid" id="local"></div>
 
+<!-- live galéria -->
+<div class="grid" id="cloud"></div>
+
+<!-- fullscreen -->
 <div id="viewer" onclick="this.style.display='none'">
   <img id="viewerImg">
 </div>
@@ -78,7 +85,7 @@ button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// 🔥 FIREBASE
+// 🔥 FIREBASE (TVOJ LINK)
 const firebaseConfig = {
   databaseURL: "https://svadba-gallery-default-rtdb.europe-west1.firebasedatabase.app"
 };
@@ -88,9 +95,14 @@ const db = getDatabase(app);
 
 // ☁️ CLOUDINARY
 const CLOUD = "da3roufa0";
-const UPLOAD_PRESET = "svadba"; // <-- musíš mať v Cloudinary
+const UPLOAD_PRESET = "svadba";
 
-const grid = document.getElementById("grid");
+const camera = document.getElementById("camera");
+const gallery = document.getElementById("gallery");
+
+const local = document.getElementById("local");
+const cloud = document.getElementById("cloud");
+
 const viewer = document.getElementById("viewer");
 const viewerImg = document.getElementById("viewerImg");
 
@@ -110,10 +122,10 @@ async function uploadToCloudinary(file) {
 }
 
 // 📸 spracovanie fotky
-async function handleFile(file) {
+async function handle(file) {
   const url = await uploadToCloudinary(file);
 
-  // uloží do Firebase (LIVE sync)
+  // uloženie do Firebase (LIVE sync)
   push(ref(db, "photos"), {
     url: url,
     time: Date.now()
@@ -121,31 +133,54 @@ async function handleFile(file) {
 }
 
 // inputy
-camera.onchange = e => handleFile(e.target.files[0]);
-gallery.onchange = e => handleFile(e.target.files[0]);
+camera.onchange = e => handle(e.target.files[0]);
+gallery.onchange = e => handle(e.target.files[0]);
 
-// 👀 LIVE GALÉRIA (REALTIME)
-onValue(ref(db, "photos"), (snapshot) => {
-  grid.innerHTML = "";
-
-  const data = snapshot.val();
-  if (!data) return;
-
-  Object.values(data)
-    .reverse()
-    .forEach(photo => {
+// 🖼 lokálny preview
+function showLocal(files) {
+  for (let f of files) {
+    const r = new FileReader();
+    r.onload = e => {
       const img = document.createElement("img");
-      img.src = photo.url;
+      img.src = e.target.result;
+      local.appendChild(img);
+    };
+    r.readAsDataURL(f);
+  }
+}
 
-      img.onclick = () => {
-        viewer.style.display = "flex";
-        viewerImg.src = photo.url;
-      };
+camera.addEventListener("change", e => showLocal(e.target.files));
+gallery.addEventListener("change", e => showLocal(e.target.files));
 
-      grid.appendChild(img);
-    });
-});
+
+// 👀 LIVE GALÉRIA
+function showGallery() {
+
+  cloud.innerHTML = "Načítavam...";
+
+  onValue(ref(db, "photos"), (snapshot) => {
+    cloud.innerHTML = "";
+
+    const data = snapshot.val();
+    if (!data) return;
+
+    Object.values(data)
+      .reverse()
+      .forEach(photo => {
+        const img = document.createElement("img");
+        img.src = photo.url;
+
+        img.onclick = () => {
+          viewer.style.display = "flex";
+          viewerImg.src = photo.url;
+        };
+
+        cloud.appendChild(img);
+      });
+  });
+}
 </script>
 
 </body>
 </html>
+
