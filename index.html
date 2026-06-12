@@ -1,74 +1,159 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Svadba upload</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viki & Peťo</title>
 
 <style>
-body {
-  margin: 0;
-  font-family: Arial;
-  background: white;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  height: 100vh;
-  padding: 20px;
+body{
+    margin:0;
+    padding:20px;
+    font-family:Arial,sans-serif;
+    background:#ffffff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
 }
 
-button {
-  width: 100%;
-  padding: 16px;
-  margin: 10px 0;
-  background: black;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 18px;
+.container{
+    text-align:center;
+    width:100%;
+    max-width:400px;
+}
+
+button{
+    width:100%;
+    padding:18px;
+    margin:10px 0;
+    border:none;
+    border-radius:12px;
+    background:#000;
+    color:#fff;
+    font-size:18px;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:0.9;
+}
+
+#status{
+    margin-top:20px;
+    font-size:16px;
 }
 </style>
 </head>
 
 <body>
 
-<button onclick="camera.click()">📸 Odfoť a pošli</button>
-<button onclick="gallery.click()">🖼 Nahraj a pošli</button>
+<div class="container">
 
-<input id="camera" type="file" accept="image/*" capture="environment" hidden>
-<input id="gallery" type="file" accept="image/*" hidden>
+    <button onclick="openCamera()">
+        Odfoť sa a pošli 📸
+    </button>
+
+    <button onclick="openGallery()">
+        Nahraj fotku z galérie 🖼️
+    </button>
+<button onclick="openGalleryPage()">
+    ❤️ Pozrieť galériu hostí
+</button>
+    <div id="status"></div>
+
+</div>
+
+<input
+    type="file"
+    id="cameraInput"
+    accept="image/*"
+    capture="environment"
+    style="display:none"
+>
+
+<input
+    type="file"
+    id="galleryInput"
+    accept="image/*"
+    style="display:none"
+>
 
 <script>
-const CLOUD_NAME = "da3roufa0";
-const UPLOAD_PRESET = "svadba";
 
-const camera = document.getElementById("camera");
-const gallery = document.getElementById("gallery");
-
-// 🔥 upload do Cloudinary
-async function upload(file) {
-  const form = new FormData();
-  form.append("file", file);
-  form.append("upload_preset", UPLOAD_PRESET);
-
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    { method: "POST", body: form }
-  );
-
-  const data = await res.json();
-
-  if (!data.secure_url) {
-    alert("Upload zlyhal");
-    return;
-  }
-
-  alert("Hotovo 👍 fotka bola odoslaná");
+const cameraInput = document.getElementById("cameraInput");
+const galleryInput = document.getElementById("galleryInput");
+const statusDiv = document.getElementById("status");
+  function openGalleryPage(){
+    window.open(
+      "https://collection.cloudinary.com/da3roufa0/bf526eebdf0747bcbb02f03edced0340",
+      "_blank"
+    );
 }
 
-// 📸 kamera / galéria
-camera.onchange = e => upload(e.target.files[0]);
-gallery.onchange = e => upload(e.target.files[0]);
+function openCamera(){
+    cameraInput.click();
+}
+
+function openGallery(){
+    galleryInput.click();
+}
+
+cameraInput.addEventListener("change", function(){
+    if(this.files.length){
+        uploadFile(this.files[0]);
+    }
+});
+
+galleryInput.addEventListener("change", function(){
+    if(this.files.length){
+        uploadFile(this.files[0]);
+    }
+});
+
+function uploadFile(file){
+
+    statusDiv.innerHTML = "Nahrávam...";
+
+    const formData = new FormData();
+
+    formData.append("file", file);
+    formData.append("upload_preset", "svadba_viktoria_peter");
+
+    fetch(
+        "https://api.cloudinary.com/v1_1/da3roufa0/image/upload",
+        {
+            method:"POST",
+            body:formData
+        }
+    )
+    .then(response => response.json())
+    .then(data => {
+
+        if(data.secure_url){
+
+            statusDiv.innerHTML =
+            "Fotka bola úspešne odoslaná ❤️";
+
+        }else{
+
+            statusDiv.innerHTML =
+            "Chyba pri nahrávaní.";
+
+            console.log(data);
+        }
+
+    })
+    .catch(error => {
+
+        statusDiv.innerHTML =
+        "Chyba pripojenia.";
+
+        console.log(error);
+
+    });
+}
+
 </script>
 
 </body>
