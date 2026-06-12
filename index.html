@@ -32,11 +32,9 @@ button {
 
 <body>
 
-<!-- 2 TLAČIDLÁ -->
 <button onclick="camera.click()">📸 Odfoť sa a pošli</button>
 <button onclick="gallery.click()">🖼 Nahraj fotku</button>
 
-<!-- INPUTY -->
 <input id="camera" type="file" accept="image/*" capture="environment" hidden>
 <input id="gallery" type="file" accept="image/*" hidden>
 
@@ -47,7 +45,7 @@ const UPLOAD_PRESET = "svadba";
 const camera = document.getElementById("camera");
 const gallery = document.getElementById("gallery");
 
-// 🔥 upload do Cloudinary
+// 🔥 UPLOAD FUNKCIA
 async function upload(file) {
   const form = new FormData();
   form.append("file", file);
@@ -60,13 +58,14 @@ async function upload(file) {
 
   const data = await res.json();
 
+  console.log("Cloudinary response:", data);
+
   if (!data.secure_url) {
-    alert("Upload zlyhal");
-    console.log(data);
+    alert("❌ Upload zlyhal");
     return;
   }
 
-  alert("Fotka odoslaná 👍");
+  alert("✔ Fotka odoslaná");
 }
 
 // 📸 kamera
